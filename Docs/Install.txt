@@ -1,0 +1,87 @@
+installation de l'environnement
+    
+    1. Créer le projet
+        mkdir glpi-dashboard
+        cd glpi-dashboard
+
+    2. Initialiser le frontend (React + Vite)
+        npm create vite@latest frontend -- --template react
+        cd frontend
+        npm install
+
+    Installer les dépendances du frontend
+        npm install react-router-dom
+        npm install @tanstack/react-query
+        npm install @dnd-kit/core
+        npm install axios
+        npm install tailwindcss @tailwindcss/vite
+
+        Le frontend utilisera :
+            React 18
+            Vite
+            React Router v6
+            Tailwind CSS
+            TanStack Query
+            Axios
+            DnD Kit
+
+    3. Initialiser le backend (Node.js + Express)
+        mkdir backend
+        cd backend
+        npm init -y
+
+    Installer les dépendances du backend
+        npm install express cors
+        npm install better-sqlite3
+        npm install multer
+        npm install adm-zip
+        npm install csv-parse
+        npm install axios
+        npm install -D nodemon
+
+        Le backend utilisera :
+            Express
+            SQLite (better-sqlite3)
+            Multer
+            ADM-ZIP
+            CSV Parse
+            Axios
+            Nodemon
+
+    4. Structure du projet
+        glpi-dashboard/
+        │
+        ├── frontend/
+        │   └── Application React
+        │
+        └── backend/
+            └── API Express + SQLite
+
+    5. Ports utilisés
+        Frontend : 5173
+        Backend : 3001
+
+    6. Lancer le projet
+        Backend
+            cd backend
+            npm run dev
+        
+        Frontend
+            cd frontend
+            npm run dev
+            
+        Stack finale
+            Frontend
+                React 18 + Vite
+                React Router v6
+                Tailwind CSS
+                TanStack Query
+                @dnd-kit/core
+                Axios
+            
+            Backend
+                Node.js + Express
+                better-sqlite3
+                Multer + ADM-ZIP
+                csv-parse
+                Axios (communication avec l'API GLPI 10.x)
