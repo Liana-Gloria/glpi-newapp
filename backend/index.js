@@ -10,6 +10,7 @@ const importRouter     = require('./routes/import');
 const resetRouter      = require('./routes/reset');
 const dashboardRouter  = require('./routes/dashboard');
 const authRouter       = require('./routes/auth');
+const syncRouter       = require('./routes/sync');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -27,6 +28,7 @@ app.use('/api/import',       importRouter);
 app.use('/api/reset',        resetRouter);
 app.use('/api/dashboard',    dashboardRouter);
 app.use('/api/auth',         authRouter);
+app.use('/api/sync',         syncRouter);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 

@@ -40,4 +40,24 @@ db.exec(`
   );
 `);
 
+// --- Phase 7: GLPI sync tracking columns (added idempotently) -------------
+// SQLite has no "ADD COLUMN IF NOT EXISTS", so guard with PRAGMA table_info.
+function ensureColumn(table, column, definition) {
+  const exists = db
+    .prepare(`PRAGMA table_info(${table})`)
+    .all()
+    .some((c) => c.name === column);
+  if (!exists) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+}
+
+// items: link to the GLPI asset + last status pulled back from GLPI.
+ensureColumn('items', 'glpi_id', 'INTEGER');
+ensureColumn('items', 'glpi_itemtype', 'TEXT');
+ensureColumn('items', 'glpi_status', 'TEXT');
+ensureColumn('items', 'glpi_synced_at', 'DATETIME');
+
+// tickets: link to the GLPI ticket.
+ensureColumn('tickets', 'glpi_id', 'INTEGER');
+ensureColumn('tickets', 'glpi_synced_at', 'DATETIME');
+
 module.exports = db;
