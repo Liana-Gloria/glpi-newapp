@@ -14,6 +14,7 @@ import Import from './pages/backoffice/Import'
 import Reset from './pages/backoffice/Reset'
 import Tickets from './pages/backoffice/Tickets'
 import KanbanSettings from './pages/backoffice/KanbanSettings'
+import Sync from './pages/backoffice/Sync'
 
 export default function App() {
   return (
@@ -34,6 +35,7 @@ export default function App() {
           <Route path="/backoffice/reset" element={<Reset />} />
           <Route path="/backoffice/tickets" element={<Tickets />} />
           <Route path="/backoffice/settings" element={<KanbanSettings />} />
+          <Route path="/backoffice/sync" element={<Sync />} />
         </Route>
       </Route>
 

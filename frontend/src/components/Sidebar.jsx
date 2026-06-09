@@ -12,6 +12,7 @@ const backLinks = [
   { to: '/backoffice/import', label: 'Import' },
   { to: '/backoffice/tickets', label: 'Tickets' },
   { to: '/backoffice/settings', label: 'Paramètres Kanban' },
+  { to: '/backoffice/sync', label: 'Synchronisation GLPI' },
   { to: '/backoffice/reset', label: 'Réinitialiser' },
 ]
 
