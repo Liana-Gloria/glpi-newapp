@@ -15,10 +15,36 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// GET /api/items
+// GET /api/items?type=&search=  (recherche multi-critère)
 router.get('/', (req, res) => {
-  const items = db.prepare('SELECT * FROM items ORDER BY created_at DESC').all();
+  const { type, search } = req.query;
+  const where = [];
+  const params = [];
+
+  if (type) {
+    where.push('type = ?');
+    params.push(type);
+  }
+  if (search) {
+    where.push('(name LIKE ? OR serial LIKE ? OR type LIKE ?)');
+    const like = `%${search}%`;
+    params.push(like, like, like);
+  }
+
+  const sql =
+    'SELECT * FROM items' +
+    (where.length ? ' WHERE ' + where.join(' AND ') : '') +
+    ' ORDER BY created_at DESC';
+  const items = db.prepare(sql).all(...params);
   res.json(items);
+});
+
+// GET /api/items/types — liste distincte des types (pour le filtre)
+router.get('/types', (req, res) => {
+  const rows = db
+    .prepare("SELECT DISTINCT type FROM items WHERE type IS NOT NULL AND type <> '' ORDER BY type")
+    .all();
+  res.json(rows.map((r) => r.type));
 });
 
 // GET /api/items/:id

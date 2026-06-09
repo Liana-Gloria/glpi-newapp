@@ -10,6 +10,24 @@ router.get('/', (req, res) => {
   res.json(settings);
 });
 
+// PUT /api/settings — mise à jour groupée { key: value, ... }
+router.put('/', requireAdmin, (req, res) => {
+  const body = req.body || {};
+  const keys = Object.keys(body);
+  if (keys.length === 0) return res.status(400).json({ error: 'body is required' });
+  const stmt = db.prepare(
+    'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value'
+  );
+  const save = db.transaction(() => {
+    for (const key of keys) {
+      const value = body[key];
+      stmt.run(key, typeof value === 'string' ? value : JSON.stringify(value));
+    }
+  });
+  save();
+  res.json({ ok: true });
+});
+
 // PUT /api/settings/:key
 router.put('/:key', requireAdmin, (req, res) => {
   const { value } = req.body;

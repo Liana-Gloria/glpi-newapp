@@ -1,6 +1,10 @@
 # Dependencies
 node_modules/
 
+# Runtime data (SQLite DB + imported images)
+data/
+uploads/
+
 # Build
 dist/
 dist-ssr/

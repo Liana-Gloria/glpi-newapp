@@ -19,14 +19,42 @@ router.get('/:id', (req, res) => {
   res.json(ticket);
 });
 
-// POST /api/tickets
+// POST /api/tickets — crée le ticket + associe les items (ticket_items)
 router.post('/', (req, res) => {
-  const { title, description, status } = req.body;
+  const { title, description, status, item_ids } = req.body;
   if (!title) return res.status(400).json({ error: 'title is required' });
-  const result = db.prepare(
-    'INSERT INTO tickets (title, description, status) VALUES (?, ?, ?)'
-  ).run(title, description || null, status || 'open');
-  res.status(201).json({ id: result.lastInsertRowid });
+
+  const ids = Array.isArray(item_ids) ? item_ids : [];
+
+  const create = db.transaction(() => {
+    const result = db
+      .prepare('INSERT INTO tickets (title, description, status) VALUES (?, ?, ?)')
+      .run(title, description || null, status || 'open');
+    const ticketId = result.lastInsertRowid;
+    const link = db.prepare(
+      'INSERT OR IGNORE INTO ticket_items (ticket_id, item_id) VALUES (?, ?)'
+    );
+    for (const itemId of ids) link.run(ticketId, itemId);
+    return ticketId;
+  });
+
+  try {
+    const id = create();
+    res.status(201).json({ id });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+// PATCH /api/tickets/:id/status — change le statut (drag Kanban)
+router.patch('/:id/status', (req, res) => {
+  const { status } = req.body;
+  if (!status) return res.status(400).json({ error: 'status is required' });
+  const result = db
+    .prepare('UPDATE tickets SET status = ? WHERE id = ?')
+    .run(status, req.params.id);
+  if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
+  res.json({ ok: true });
 });
 
 // PUT /api/tickets/:id
