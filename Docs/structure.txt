@@ -1,0 +1,41 @@
+├── frontend/
+│ └── src/
+│ ├── api/ ← appels Axios centralisés
+│ │ ├── items.js
+│ │ ├── tickets.js
+│ │ └── admin.js
+│ ├── components/ ← composants réutilisables
+│ │ ├── Layout.jsx
+│ │ ├── Sidebar.jsx
+│ │ └── ProtectedRoute.jsx
+│ ├── pages/
+│ │ ├── backoffice/
+│ │ │ ├── Login.jsx ← code unique
+│ │ │ ├── Dashboard.jsx
+│ │ │ ├── Import.jsx
+│ │ │ ├── Reset.jsx
+│ │ │ ├── Tickets.jsx
+│ │ │ └── KanbanSettings.jsx ← J2
+│ │ └── frontoffice/
+│ │ ├── Items.jsx ← liste + recherche
+│ │ ├── CreateTicket.jsx
+│ │ └── Kanban.jsx ← J2
+│ ├── hooks/ ← logique réutilisable
+│ │ └── useAuth.js
+│ ├── store/ ← état global (Context API)
+│ │ └── AuthContext.jsx
+│ └── App.jsx ← routeur principal
+└── backend/
+├── routes/
+│ ├── items.js
+│ ├── tickets.js
+│ ├── import.js
+│ ├── admin.js
+│ └── settings.js ← J2 (couleurs kanban)
+├── db/
+│ ├── database.js ← init SQLite + schema
+│ └── seed.js
+├── middleware/
+│ └── auth.js ← vérif code unique
+├── uploads/ ← images extraites du ZIP
+└── index.js ← point d'entrée Express

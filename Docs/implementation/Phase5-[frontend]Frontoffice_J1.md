@@ -1,0 +1,2 @@
+Items.jsx — liste avec filtre type (select) + barre de recherche texte, appel GET /api/items?type=&search=
+CreateTicket.jsx — formulaire titre/description + sélecteur multi-items (checkbox ou tags), POST /api/tickets
