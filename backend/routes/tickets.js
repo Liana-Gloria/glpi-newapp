@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/database');
 const requireAdmin = require('../middleware/auth');
+const autosync = require('../glpi/autosync');
+const { normalizeTicketStatus } = require('../glpi/mapping');
 
 // GET /api/tickets
 router.get('/', (req, res) => {
@@ -40,20 +42,29 @@ router.post('/', (req, res) => {
 
   try {
     const id = create();
+    autosync.syncTicket(id); // temps réel -> GLPI
     res.status(201).json({ id });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
 });
 
-// PATCH /api/tickets/:id/status — change le statut (drag Kanban)
+// PATCH /api/tickets/:id/status — change le statut (drag Kanban).
+// Body : { status, resolution? }. `resolution` est saisie dans la boîte de
+// dialogue lors du passage en "done" (Vita). Le statut est normalisé sur les
+// 3 clés du Kanban (open / in_progress / done).
 router.patch('/:id/status', (req, res) => {
-  const { status } = req.body;
+  const { status, resolution } = req.body;
   if (!status) return res.status(400).json({ error: 'status is required' });
-  const result = db
-    .prepare('UPDATE tickets SET status = ? WHERE id = ?')
-    .run(status, req.params.id);
+  const canonical = normalizeTicketStatus(status);
+  const result =
+    resolution !== undefined
+      ? db
+          .prepare('UPDATE tickets SET status = ?, resolution = ? WHERE id = ?')
+          .run(canonical, resolution || null, req.params.id)
+      : db.prepare('UPDATE tickets SET status = ? WHERE id = ?').run(canonical, req.params.id);
   if (result.changes === 0) return res.status(404).json({ error: 'Not found' });
+  autosync.syncTicket(req.params.id); // temps réel -> GLPI (statut Kanban)
   res.json({ ok: true });
 });
 
@@ -65,6 +76,7 @@ router.put('/:id', requireAdmin, (req, res) => {
   db.prepare(
     'UPDATE tickets SET title = ?, description = ?, status = ? WHERE id = ?'
   ).run(title ?? existing.title, description ?? existing.description, status ?? existing.status, req.params.id);
+  autosync.syncTicket(req.params.id); // temps réel -> GLPI
   res.json({ ok: true });
 });
 

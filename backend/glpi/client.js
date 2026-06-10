@@ -114,6 +114,25 @@ class GlpiClient {
     }
   }
 
+  // Delete an item. By default force_purge=true so it is really removed
+  // (GLPI otherwise only moves it to the trash). 404 is treated as success
+  // (already gone). Returns true if GLPI confirmed the deletion.
+  async deleteItem(itemtype, id, { purge = true } = {}) {
+    try {
+      await this.http.delete(`/${itemtype}/${id}`, {
+        headers: this.headers(),
+        params: purge ? { force_purge: true } : undefined,
+      });
+      return true;
+    } catch (err) {
+      if (err.response && err.response.status === 404) return true;
+      throw new GlpiError(
+        `delete ${itemtype}/${id} failed: ${describeError(err)}`,
+        err.response && err.response.status
+      );
+    }
+  }
+
   // Full list of an itemtype (small datasets only). Returns [] when empty.
   async listAll(itemtype) {
     try {

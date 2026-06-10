@@ -15,7 +15,9 @@ export async function createTicket({ title, description, item_ids }) {
   return data
 }
 
-export async function updateTicketStatus(id, status) {
-  const { data } = await api.patch(`/tickets/${id}/status`, { status })
+export async function updateTicketStatus(id, status, resolution) {
+  const payload = { status }
+  if (resolution !== undefined) payload.resolution = resolution
+  const { data } = await api.patch(`/tickets/${id}/status`, payload)
   return data
 }

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { getSyncStatus, pushToGlpi, pullFromGlpi } from '../../api/sync'
+import { getSyncStatus, getSyncJournal, purgeGlpi } from '../../api/sync'
 
 function Banner({ kind, children }) {
   const styles = {
@@ -11,55 +11,95 @@ function Banner({ kind, children }) {
   return <div className={`rounded-lg p-4 text-sm ${styles[kind]}`}>{children}</div>
 }
 
+function Stat({ label, value, accent }) {
+  return (
+    <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
+      <div className="text-xs text-gray-500">{label}</div>
+      <div className={`text-xl font-bold ${accent || 'text-gray-900'}`}>{value}</div>
+    </div>
+  )
+}
+
+const ACTION_STYLE = {
+  'create-item': 'bg-emerald-100 text-emerald-800',
+  'create-ticket': 'bg-emerald-100 text-emerald-800',
+  'update-item': 'bg-sky-100 text-sky-800',
+  'update-ticket': 'bg-sky-100 text-sky-800',
+  purge: 'bg-amber-100 text-amber-800',
+}
+
+function ActionBadge({ action, status }) {
+  const style = status === 'error' ? 'bg-red-100 text-red-800' : ACTION_STYLE[action] || 'bg-gray-100 text-gray-700'
+  return <span className={`rounded px-2 py-0.5 text-xs font-semibold ${style}`}>{action}</span>
+}
+
+function timeLabel(iso) {
+  try {
+    return new Date(iso).toLocaleTimeString('fr-FR')
+  } catch {
+    return iso
+  }
+}
+
 export default function Sync() {
   const queryClient = useQueryClient()
-  const [busy, setBusy] = useState('')
-  const [result, setResult] = useState(null)
+  const [confirmPurge, setConfirmPurge] = useState(false)
+  const [purging, setPurging] = useState(false)
+  const [purgeResult, setPurgeResult] = useState(null)
   const [error, setError] = useState('')
 
-  const status = useQuery({ queryKey: ['sync-status'], queryFn: getSyncStatus, retry: false })
-
-  async function run(action, fn) {
-    setBusy(action)
-    setError('')
-    setResult(null)
-    try {
-      const data = await fn()
-      setResult({ action, data })
-      // Refresh anything that may have changed.
-      queryClient.invalidateQueries({ queryKey: ['sync-status'] })
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] })
-      queryClient.invalidateQueries({ queryKey: ['items'] })
-      queryClient.invalidateQueries({ queryKey: ['tickets'] })
-      status.refetch()
-    } catch (err) {
-      setError(err.response?.data?.error || 'Opération échouée.')
-    } finally {
-      setBusy('')
-    }
-  }
+  // L'état et le journal sont relus en continu => vérification « temps réel ».
+  const status = useQuery({
+    queryKey: ['sync-status'],
+    queryFn: getSyncStatus,
+    retry: false,
+    refetchInterval: 5000,
+  })
+  const journalQuery = useQuery({
+    queryKey: ['sync-journal'],
+    queryFn: getSyncJournal,
+    retry: false,
+    refetchInterval: 3000,
+  })
 
   const connected = status.data?.connected
   const glpi = status.data
+  const journal = journalQuery.data?.journal || []
+
+  async function handlePurge() {
+    setPurging(true)
+    setError('')
+    setPurgeResult(null)
+    try {
+      const data = await purgeGlpi()
+      setPurgeResult(data)
+      setConfirmPurge(false)
+      queryClient.invalidateQueries({ queryKey: ['sync-status'] })
+      queryClient.invalidateQueries({ queryKey: ['sync-journal'] })
+      status.refetch()
+      journalQuery.refetch()
+    } catch (err) {
+      setError(err.response?.data?.error || 'Purge échouée.')
+    } finally {
+      setPurging(false)
+    }
+  }
 
   return (
     <div className="max-w-3xl">
       <h1 className="mb-2 text-2xl font-bold text-gray-900">Synchronisation GLPI</h1>
       <p className="mb-6 text-sm text-gray-500">
-        Pousser les items et tickets de NewApp vers GLPI, puis récupérer les
-        changements de statut effectués dans GLPI.
+        Synchronisation <strong>automatique en temps réel</strong> : chaque création ou
+        modification d’item ou de ticket est poussée vers GLPI. Cette page est en lecture seule.
       </p>
 
-      {/* Connection state */}
+      {/* État de connexion + compteurs */}
       <section className="mb-6 rounded-xl border border-gray-200 bg-white p-5">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-800">Connexion</h2>
-          <button
-            onClick={() => status.refetch()}
-            className="text-sm text-indigo-600 hover:underline"
-          >
-            Tester à nouveau
-          </button>
+          <span className="text-xs text-gray-400">
+            {status.isFetching ? 'Actualisation…' : 'Auto-actualisé'}
+          </span>
         </div>
 
         {status.isLoading ? (
@@ -92,62 +132,106 @@ export default function Sync() {
         )}
       </section>
 
-      {/* Actions */}
-      <div className="mb-6 flex flex-wrap gap-3">
-        <button
-          onClick={() => run('push', pushToGlpi)}
-          disabled={!connected || !!busy}
-          className="rounded-lg bg-indigo-600 px-5 py-2 font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
-        >
-          {busy === 'push' ? 'Envoi vers GLPI…' : 'Pousser vers GLPI →'}
-        </button>
-        <button
-          onClick={() => run('pull', pullFromGlpi)}
-          disabled={!connected || !!busy}
-          className="rounded-lg bg-emerald-600 px-5 py-2 font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
-        >
-          {busy === 'pull' ? 'Récupération…' : '← Tirer depuis GLPI'}
-        </button>
-      </div>
+      {/* Journal temps réel */}
+      <section className="mb-6 rounded-xl border border-gray-200 bg-white p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-800">Journal de synchronisation</h2>
+          <span className="flex items-center gap-1.5 text-xs text-gray-400">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+            temps réel
+          </span>
+        </div>
 
-      {error && <Banner kind="error">{error}</Banner>}
+        {journal.length === 0 ? (
+          <p className="text-sm text-gray-400">
+            Aucun événement pour le moment. Importez des données ou modifiez un ticket pour
+            déclencher une synchronisation.
+          </p>
+        ) : (
+          <div className="max-h-96 overflow-y-auto">
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 bg-white">
+                <tr className="text-left text-gray-500">
+                  <th className="py-1.5 pr-3 font-semibold">Heure</th>
+                  <th className="py-1.5 pr-3 font-semibold">Action</th>
+                  <th className="py-1.5 pr-3 font-semibold">Élément</th>
+                  <th className="py-1.5 pr-3 font-semibold">GLPI</th>
+                  <th className="py-1.5 font-semibold">État</th>
+                </tr>
+              </thead>
+              <tbody>
+                {journal.map((e) => (
+                  <tr key={e.id} className="border-t border-gray-100">
+                    <td className="py-1.5 pr-3 text-gray-500">{timeLabel(e.at)}</td>
+                    <td className="py-1.5 pr-3"><ActionBadge action={e.action} status={e.status} /></td>
+                    <td className="py-1.5 pr-3 text-gray-700">
+                      {e.name || e.message || '—'}
+                    </td>
+                    <td className="py-1.5 pr-3 text-gray-500">{e.glpiId ? `#${e.glpiId}` : '—'}</td>
+                    <td className="py-1.5">
+                      {e.status === 'error' ? (
+                        <span className="font-semibold text-red-600" title={e.message}>échec</span>
+                      ) : (
+                        <span className="text-emerald-600">ok</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
-      {result && (
-        <div className="mt-4">
+      {/* Zone de danger : purge GLPI */}
+      <section className="rounded-xl border border-red-200 bg-red-50 p-5">
+        <h2 className="mb-2 text-lg font-semibold text-red-800">Purger la base GLPI</h2>
+        <p className="mb-4 text-sm text-red-700">
+          Supprime de GLPI <strong>tout ce que NewApp y a créé</strong> (éléments liés et
+          orphelins marqués « {`[NewApp]`} »), puis réinitialise les liens locaux. Irréversible.
+        </p>
+
+        {error && <p className="mb-3 text-sm text-red-700">{error}</p>}
+        {purgeResult && (
           <Banner kind="info">
-            {result.action === 'push' ? (
-              <span>
-                <strong>{result.data.itemsPushed}</strong> item(s) et{' '}
-                <strong>{result.data.ticketsPushed}</strong> ticket(s) créés dans GLPI.
-              </span>
-            ) : (
-              <span>
-                <strong>{result.data.itemsUpdated}</strong> item(s) et{' '}
-                <strong>{result.data.ticketsUpdated}</strong> ticket(s) mis à jour depuis GLPI.
-                {(result.data.itemsMissing > 0 || result.data.ticketsMissing > 0) && (
-                  <> {result.data.itemsMissing + result.data.ticketsMissing} élément(s) supprimé(s) côté GLPI (lien retiré).</>
-                )}
-              </span>
-            )}
-            {result.data.errors?.length > 0 && (
+            GLPI purgé : <strong>{purgeResult.itemsDeleted}</strong> item(s) et{' '}
+            <strong>{purgeResult.ticketsDeleted}</strong> ticket(s) supprimés.
+            {purgeResult.errors?.length > 0 && (
               <ul className="mt-2 list-disc pl-5 text-amber-700">
-                {result.data.errors.map((e, i) => (
-                  <li key={i}>{e}</li>
+                {purgeResult.errors.map((x, i) => (
+                  <li key={i}>{x}</li>
                 ))}
               </ul>
             )}
           </Banner>
-        </div>
-      )}
-    </div>
-  )
-}
+        )}
 
-function Stat({ label, value, accent }) {
-  return (
-    <div className="rounded-lg border border-gray-100 bg-gray-50 p-3">
-      <div className="text-xs text-gray-500">{label}</div>
-      <div className={`text-xl font-bold ${accent || 'text-gray-900'}`}>{value}</div>
+        {!confirmPurge ? (
+          <button
+            onClick={() => { setConfirmPurge(true); setPurgeResult(null) }}
+            className="rounded-lg bg-red-600 px-5 py-2 font-medium text-white hover:bg-red-700"
+          >
+            Purger GLPI…
+          </button>
+        ) : (
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-red-800">Confirmer la purge GLPI ?</span>
+            <button
+              onClick={handlePurge}
+              disabled={purging}
+              className="rounded-lg bg-red-600 px-5 py-2 font-medium text-white hover:bg-red-700 disabled:opacity-60"
+            >
+              {purging ? 'Purge…' : 'Oui, purger'}
+            </button>
+            <button
+              onClick={() => setConfirmPurge(false)}
+              className="rounded-lg border border-gray-300 px-5 py-2 font-medium text-gray-700 hover:bg-gray-100"
+            >
+              Annuler
+            </button>
+          </div>
+        )}
+      </section>
     </div>
   )
 }

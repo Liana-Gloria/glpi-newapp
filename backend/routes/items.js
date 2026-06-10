@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db/database');
 const requireAdmin = require('../middleware/auth');
+const autosync = require('../glpi/autosync');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -62,6 +63,7 @@ router.post('/', requireAdmin, upload.single('image'), (req, res) => {
   const result = db.prepare(
     'INSERT INTO items (name, type, serial, image_path) VALUES (?, ?, ?, ?)'
   ).run(name, type || null, serial || null, image_path);
+  autosync.syncItem(result.lastInsertRowid); // temps réel -> GLPI
   res.status(201).json({ id: result.lastInsertRowid });
 });
 
@@ -74,6 +76,7 @@ router.put('/:id', requireAdmin, upload.single('image'), (req, res) => {
   db.prepare(
     'UPDATE items SET name = ?, type = ?, serial = ?, image_path = ? WHERE id = ?'
   ).run(name ?? existing.name, type ?? existing.type, serial ?? existing.serial, image_path, req.params.id);
+  autosync.syncItem(req.params.id); // temps réel -> GLPI
   res.json({ ok: true });
 });
 

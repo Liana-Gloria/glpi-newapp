@@ -34,6 +34,16 @@ db.exec(`
     PRIMARY KEY (ticket_id, item_id)
   );
 
+  -- Coûts / temps passés par ticket (Feuille 3 de l'import).
+  CREATE TABLE IF NOT EXISTS ticket_costs (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    ticket_id       INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+    duration_second INTEGER DEFAULT 0,
+    time_cost       REAL    DEFAULT 0,
+    fixed_cost      REAL    DEFAULT 0,
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+  );
+
   CREATE TABLE IF NOT EXISTS settings (
     key   TEXT PRIMARY KEY,
     value TEXT
@@ -59,5 +69,34 @@ ensureColumn('items', 'glpi_synced_at', 'DATETIME');
 // tickets: link to the GLPI ticket.
 ensureColumn('tickets', 'glpi_id', 'INTEGER');
 ensureColumn('tickets', 'glpi_synced_at', 'DATETIME');
+
+// --- Import CSV: colonnes métier supplémentaires (Feuilles 1 & 2) ----------
+// items (Feuille 1) : on conserve toutes les colonnes du CSV.
+ensureColumn('items', 'status', 'TEXT');
+ensureColumn('items', 'location', 'TEXT');
+ensureColumn('items', 'manufacturer', 'TEXT');
+ensureColumn('items', 'model', 'TEXT');
+ensureColumn('items', 'inventory_number', 'TEXT');
+ensureColumn('items', 'assigned_user', 'TEXT');
+
+// tickets (Feuille 2) : référence d'origine + métadonnées.
+ensureColumn('tickets', 'ref_ticket', 'TEXT');     // Ref_Ticket du CSV (clé de liaison avec les coûts)
+ensureColumn('tickets', 'ticket_type', 'TEXT');    // Incident / Request...
+ensureColumn('tickets', 'priority', 'TEXT');
+ensureColumn('tickets', 'ticket_date', 'TEXT');    // Date + Heure d'origine
+ensureColumn('tickets', 'resolution', 'TEXT');     // commentaire de clôture (saisi au passage en "Vita")
+
+// --- Index uniques pour l'upsert (import idempotent) -----------------------
+// Un item est identifié par son nom (PC-ADM-001...) ; un ticket par sa référence.
+// Si d'anciennes données contiennent des doublons, on n'empêche pas le boot :
+// l'index échoue, l'upsert retombera alors sur de simples INSERT.
+try {
+  db.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_items_name   ON items(name);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_tickets_ref  ON tickets(ref_ticket) WHERE ref_ticket IS NOT NULL;
+  `);
+} catch (err) {
+  console.warn('[db] Index unique non créé (doublons existants ?):', err.message);
+}
 
 module.exports = db;

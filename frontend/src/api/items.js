@@ -19,6 +19,13 @@ export async function fetchDashboard() {
   return data
 }
 
+export async function previewImport(formData) {
+  const { data } = await api.post('/import/preview', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return data
+}
+
 export async function importData(formData, onUploadProgress) {
   const { data } = await api.post('/import', formData, {
     headers: { 'Content-Type': 'multipart/form-data' },
@@ -27,7 +34,7 @@ export async function importData(formData, onUploadProgress) {
   return data
 }
 
-export async function resetAll() {
-  const { data } = await api.delete('/reset')
+export async function resetAll({ syncGlpi = true } = {}) {
+  const { data } = await api.delete('/reset', { data: { syncGlpi } })
   return data
 }

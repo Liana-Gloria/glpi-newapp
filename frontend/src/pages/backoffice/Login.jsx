@@ -18,8 +18,12 @@ export default function Login() {
     try {
       await login(code)
       navigate('/backoffice/dashboard')
-    } catch {
-      setError('Code administrateur invalide')
+    } catch (err) {
+      if (err.response?.status === 401) {
+        setError('Code administrateur invalide')
+      } else {
+        setError('Serveur injoignable : vérifiez que le backend est démarré (port 3001).')
+      }
     } finally {
       setLoading(false)
     }

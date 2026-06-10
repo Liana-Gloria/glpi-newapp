@@ -11,6 +11,7 @@ const router = express.Router();
 const db = require('../db/database');
 const requireAdmin = require('../middleware/auth');
 const config = require('../glpi/config');
+const autosync = require('../glpi/autosync');
 const { withSession, GlpiError } = require('../glpi/client');
 const {
   itemtypeFor,
@@ -57,6 +58,22 @@ router.get('/status', requireAdmin, async (req, res) => {
     res.json({ connected: true, apiUrl: config.apiUrl, ...result, local });
   } catch (err) {
     res.status(502).json({ connected: false, error: err.message });
+  }
+});
+
+// GET /api/sync/journal — événements de synchronisation temps réel (lecture seule).
+router.get('/journal', requireAdmin, (req, res) => {
+  res.json({ journal: autosync.getJournal() });
+});
+
+// POST /api/sync/purge — supprime de GLPI tout ce que NewApp y a créé.
+router.post('/purge', requireAdmin, async (req, res) => {
+  try {
+    const summary = await autosync.purgeGlpi();
+    res.json(summary);
+  } catch (err) {
+    const status = err instanceof GlpiError && err.status === 401 ? 401 : 502;
+    res.status(status).json({ error: err.message });
   }
 });
 
