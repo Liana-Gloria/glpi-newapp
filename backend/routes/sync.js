@@ -109,12 +109,14 @@ router.post('/push', requireAdmin, async (req, res) => {
         }
       }
 
+      const requesterId = await client.currentUserId();
       for (const ticket of tickets) {
         try {
           const glpiId = await client.createItem('Ticket', {
             name: ticket.title,
             content: ticket.description || ticket.title,
             status: newappStatusToGlpi(ticket.status),
+            ...(requesterId ? { _users_id_requester: requesterId } : {}),
           });
           linkTicket.run(glpiId, ticket.id);
           out.ticketsPushed++;

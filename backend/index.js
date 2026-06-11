@@ -11,6 +11,7 @@ const resetRouter      = require('./routes/reset');
 const dashboardRouter  = require('./routes/dashboard');
 const authRouter       = require('./routes/auth');
 const syncRouter       = require('./routes/sync');
+const autosync         = require('./glpi/autosync');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -32,4 +33,10 @@ app.use('/api/sync',         syncRouter);
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
-app.listen(PORT, () => console.log(`Backend running on http://localhost:${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Backend running on http://localhost:${PORT}`);
+  // Filet de sécurité : rattrape périodiquement les tickets/items restés
+  // non synchronisés vers GLPI (échecs transitoires de la sync temps réel).
+  const intervalMs = Number(process.env.GLPI_AUTOSYNC_MS || 60000);
+  if (intervalMs > 0) autosync.startAutoSync(intervalMs);
+});

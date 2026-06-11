@@ -45,13 +45,17 @@ function itemInput(item) {
   };
 }
 
-function ticketInput(ticket) {
+// `requesterId` n'est passé qu'à la CRÉATION : ajouter _users_id_requester à
+// chaque update créerait un acteur demandeur en double à chaque sync.
+function ticketInput(ticket, requesterId) {
   const base = ticket.description || ticket.title;
-  return {
+  const input = {
     name: ticket.title,
     content: `${base}\n\n${NEWAPP_MARKER} ticket #${ticket.id}`,
     status: newappStatusToGlpi(ticket.status),
   };
+  if (requesterId) input._users_id_requester = requesterId;
+  return input;
 }
 
 // --- Opérations unitaires (dans une session ouverte) ----------------------
@@ -78,7 +82,8 @@ async function applyTicket(client, ticket) {
     await client.updateItem('Ticket', ticket.glpi_id, ticketInput(ticket));
     return record({ action: 'update-ticket', entity: 'ticket', localId: ticket.id, name: ticket.title, glpiId: ticket.glpi_id, status: 'ok' });
   }
-  const glpiId = await client.createItem('Ticket', ticketInput(ticket));
+  const requesterId = await client.currentUserId();
+  const glpiId = await client.createItem('Ticket', ticketInput(ticket, requesterId));
   linkTicket.run(glpiId, ticket.id);
   return record({ action: 'create-ticket', entity: 'ticket', localId: ticket.id, name: ticket.title, glpiId, status: 'ok' });
 }
@@ -204,6 +209,29 @@ function purgeGlpi() {
   });
 }
 
+// --- Réconciliation périodique (filet de sécurité) ------------------------
+// La sync temps réel est best-effort : si GLPI est injoignable à l'instant T,
+// le ticket/item reste glpi_id=NULL sans relance. Cette boucle pousse
+// régulièrement tout ce qui n'a pas encore été lié, ce qui rattrape
+// automatiquement les échecs transitoires (Apache éteint, hoquet réseau…).
+let reconcileTimer = null;
+function startAutoSync(intervalMs = 60000) {
+  if (reconcileTimer) return reconcileTimer; // idempotent
+  const tick = () => {
+    const pendingItems = db.prepare('SELECT COUNT(*) c FROM items WHERE glpi_id IS NULL').get().c;
+    const pendingTickets = db.prepare('SELECT COUNT(*) c FROM tickets WHERE glpi_id IS NULL').get().c;
+    if (pendingItems + pendingTickets > 0) syncAllPending();
+  };
+  tick(); // une passe au démarrage
+  reconcileTimer = setInterval(tick, intervalMs);
+  if (reconcileTimer.unref) reconcileTimer.unref(); // n'empêche pas l'arrêt du process
+  return reconcileTimer;
+}
+
+function stopAutoSync() {
+  if (reconcileTimer) { clearInterval(reconcileTimer); reconcileTimer = null; }
+}
+
 module.exports = {
   NEWAPP_MARKER,
   getJournal,
@@ -211,4 +239,6 @@ module.exports = {
   syncTicket,
   syncAllPending,
   purgeGlpi,
+  startAutoSync,
+  stopAutoSync,
 };

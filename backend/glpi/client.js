@@ -29,7 +29,18 @@ class GlpiClient {
     this.hostHeader = opts.hostHeader != null ? opts.hostHeader : config.hostHeader;
     this.entityId = opts.entityId != null ? opts.entityId : config.entityId;
     this.sessionToken = null;
+    this._userId = null; // id GLPI du propriétaire du token (résolu à la demande)
     this.http = axios.create({ baseURL: this.apiUrl, timeout: 20000 });
+  }
+
+  // Id GLPI de l'utilisateur de la session (propriétaire du user_token).
+  // Sert à attribuer un demandeur aux tickets créés (sinon ticket orphelin,
+  // invisible dans les files personnelles GLPI). Mis en cache pour la session.
+  async currentUserId() {
+    if (this._userId != null) return this._userId;
+    const session = await this.getFullSession();
+    this._userId = Number(session.glpiID) || 0;
+    return this._userId;
   }
 
   headers(extra = {}) {
