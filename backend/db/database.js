@@ -70,6 +70,11 @@ ensureColumn('items', 'glpi_synced_at', 'DATETIME');
 ensureColumn('tickets', 'glpi_id', 'INTEGER');
 ensureColumn('tickets', 'glpi_synced_at', 'DATETIME');
 
+// ticket_costs: origine du coût. 'import' = coût importé du CSV/GLPI (défaut),
+// 'kanban' = coût saisi à la clôture d'un ticket sur le Kanban. Permet de
+// distinguer les deux dans la page "Coûts par item".
+ensureColumn('ticket_costs', 'source', "TEXT DEFAULT 'import'");
+
 // --- Import CSV: colonnes métier supplémentaires (Feuilles 1 & 2) ----------
 // items (Feuille 1) : on conserve toutes les colonnes du CSV.
 ensureColumn('items', 'status', 'TEXT');

@@ -159,6 +159,11 @@ function TicketModal({ id, labels, onClose }) {
 // Ici : passage en "Vita" (terminé) -> commentaire de résolution obligatoire.
 function ResolutionDialog({ targetLabel, onConfirm, onCancel }) {
   const [text, setText] = useState('')
+  const [cout, setCout] = useState('')
+
+  const coutValid = cout !== '' && Number(cout) >= 0 && !Number.isNaN(Number(cout))
+  const canConfirm = !!text.trim() && coutValid
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onCancel}>
       <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
@@ -174,13 +179,24 @@ function ResolutionDialog({ targetLabel, onConfirm, onCancel }) {
           placeholder="Commentaire de résolution…"
           className="mb-4 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
         />
+        <label className="mb-1 block text-sm font-medium text-gray-700">Coût (€)</label>
+        <input
+          type="number"
+          min="0"
+          step="0.01"
+          value={cout}
+          onChange={(e) => setCout(e.target.value)}
+          placeholder="0.00"
+          className="mb-4 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+        />
+
         <div className="flex justify-end gap-3">
           <button onClick={onCancel} className="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100">
             Annuler
           </button>
           <button
-            onClick={() => onConfirm(text.trim())}
-            disabled={!text.trim()}
+            onClick={() => onConfirm(text.trim(), Number(cout))}
+            disabled={!canConfirm}
             className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
           >
             Confirmer
@@ -319,13 +335,13 @@ export default function Kanban() {
   const labels = parseSetting(settings.kanban_labels, DEFAULT_LABELS)
   const colors = parseSetting(settings.kanban_colors, DEFAULT_COLORS)
 
-  async function applyStatus(ticketId, newStatus, resolution) {
+  async function applyStatus(ticketId, newStatus, resolution, cout) {
     // Mise à jour optimiste
     queryClient.setQueryData(['tickets'], (old = []) =>
       old.map((t) => (t.id === ticketId ? { ...t, status: newStatus } : t))
     )
     try {
-      await updateTicketStatus(ticketId, newStatus, resolution)
+      await updateTicketStatus(ticketId, newStatus, resolution, cout)
     } finally {
       queryClient.invalidateQueries({ queryKey: ['tickets'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
@@ -396,8 +412,8 @@ export default function Kanban() {
         <ResolutionDialog
           targetLabel={labels[pendingMove.status] || pendingMove.status}
           onCancel={() => setPendingMove(null)}
-          onConfirm={(resolution) => {
-            applyStatus(pendingMove.ticketId, pendingMove.status, resolution)
+          onConfirm={(resolution, cout) => {
+            applyStatus(pendingMove.ticketId, pendingMove.status, resolution, cout)
             setPendingMove(null)
           }}
         />

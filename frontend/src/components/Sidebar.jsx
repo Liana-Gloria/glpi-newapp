@@ -11,6 +11,7 @@ const backLinks = [
   { to: '/backoffice/dashboard', label: 'Tableau de bord' },
   { to: '/backoffice/import', label: 'Import' },
   { to: '/backoffice/tickets', label: 'Tickets' },
+  { to: '/backoffice/couts', label: 'Coûts par item' },
   { to: '/backoffice/settings', label: 'Paramètres Kanban' },
   { to: '/backoffice/sync', label: 'Synchronisation GLPI' },
   { to: '/backoffice/reset', label: 'Réinitialiser' },

@@ -13,6 +13,7 @@ import Dashboard from './pages/backoffice/Dashboard'
 import Import from './pages/backoffice/Import'
 import Reset from './pages/backoffice/Reset'
 import Tickets from './pages/backoffice/Tickets'
+import CoutsParItem from './pages/backoffice/CoutsParItem'
 import KanbanSettings from './pages/backoffice/KanbanSettings'
 import Sync from './pages/backoffice/Sync'
 
@@ -34,6 +35,7 @@ export default function App() {
           <Route path="/backoffice/import" element={<Import />} />
           <Route path="/backoffice/reset" element={<Reset />} />
           <Route path="/backoffice/tickets" element={<Tickets />} />
+          <Route path="/backoffice/couts" element={<CoutsParItem />} />
           <Route path="/backoffice/settings" element={<KanbanSettings />} />
           <Route path="/backoffice/sync" element={<Sync />} />
         </Route>

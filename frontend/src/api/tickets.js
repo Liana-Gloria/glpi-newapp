@@ -15,9 +15,15 @@ export async function createTicket({ title, description, priority, item_ids }) {
   return data
 }
 
-export async function updateTicketStatus(id, status, resolution) {
+export async function updateTicketStatus(id, status, resolution, cout) {
   const payload = { status }
   if (resolution !== undefined) payload.resolution = resolution
+  if (cout !== undefined) payload.cout = cout
   const { data } = await api.patch(`/tickets/${id}/status`, payload)
+  return data
+}
+
+export async function fetchCoutsParItem() {
+  const { data } = await api.get('/tickets/couts-par-item')
   return data
 }
