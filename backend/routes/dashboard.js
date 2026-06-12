@@ -16,6 +16,12 @@ router.get('/', (req, res) => {
     )
     .all();
 
+  const ticketsByType = db
+    .prepare(
+      "SELECT COALESCE(NULLIF(ticket_type, ''), 'Inconnu') AS type, COUNT(*) AS count FROM tickets GROUP BY type ORDER BY count DESC"
+    )
+    .all();
+
   const totalItems = db.prepare('SELECT COUNT(*) AS c FROM items').get().c;
   const totalTickets = db.prepare('SELECT COUNT(*) AS c FROM tickets').get().c;
 
@@ -24,6 +30,7 @@ router.get('/', (req, res) => {
     totalTickets,
     itemsByType,
     ticketsByStatus,
+    ticketsByType,
   });
 });
 

@@ -1,8 +1,29 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { fetchTickets, fetchTicket } from '../../api/tickets'
+import { fetchSettings } from '../../api/settings'
+import {
+  DEFAULT_LABELS,
+  DEFAULT_COLORS,
+  parseSetting,
+  normalizeStatus,
+} from '../../kanbanConfig'
 
-function TicketModal({ id, onClose }) {
+// Pastille de statut colorée selon les paramètres du backoffice (Settings).
+function StatusBadge({ status, labels, colors }) {
+  const key = normalizeStatus(status)
+  const color = colors[key] || '#6b7280'
+  return (
+    <span
+      className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium text-white"
+      style={{ backgroundColor: color }}
+    >
+      {labels[key] || status}
+    </span>
+  )
+}
+
+function TicketModal({ id, labels, colors, onClose }) {
   const { data, isLoading } = useQuery({
     queryKey: ['ticket', id],
     queryFn: () => fetchTicket(id),
@@ -26,7 +47,10 @@ function TicketModal({ id, onClose }) {
               <h2 className="text-xl font-bold text-gray-900">{data.title}</h2>
               <button onClick={onClose} className="text-gray-400 hover:text-gray-700">✕</button>
             </div>
-            <p className="mb-1 text-xs text-gray-400">Ticket #{data.id} · {data.status}</p>
+            <p className="mb-1 flex items-center gap-2 text-xs text-gray-400">
+              Ticket #{data.id} ·
+              <StatusBadge status={data.status} labels={labels} colors={colors} />
+            </p>
             <p className="mb-4 whitespace-pre-wrap text-sm text-gray-700">
               {data.description || 'Aucune description.'}
             </p>
@@ -63,6 +87,13 @@ export default function Tickets() {
     queryKey: ['tickets'],
     queryFn: fetchTickets,
   })
+  const { data: settings = {} } = useQuery({
+    queryKey: ['settings'],
+    queryFn: fetchSettings,
+  })
+
+  const labels = parseSetting(settings.kanban_labels, DEFAULT_LABELS)
+  const colors = parseSetting(settings.kanban_colors, DEFAULT_COLORS)
 
   if (isLoading) return <p className="text-gray-500">Chargement…</p>
   if (isError) return <p className="text-red-600">Erreur de chargement.</p>
@@ -77,6 +108,8 @@ export default function Tickets() {
             <tr>
               <th className="px-4 py-3">#</th>
               <th className="px-4 py-3">Titre</th>
+              <th className="px-4 py-3">Type</th>
+              <th className="px-4 py-3">Priorité</th>
               <th className="px-4 py-3">Statut</th>
               <th className="px-4 py-3">Créé le</th>
             </tr>
@@ -84,7 +117,7 @@ export default function Tickets() {
           <tbody className="divide-y divide-gray-100">
             {tickets.length === 0 ? (
               <tr>
-                <td colSpan={4} className="px-4 py-6 text-center text-gray-400">
+                <td colSpan={6} className="px-4 py-6 text-center text-gray-400">
                   Aucun ticket.
                 </td>
               </tr>
@@ -98,9 +131,25 @@ export default function Tickets() {
                   <td className="px-4 py-3 text-gray-500">{t.id}</td>
                   <td className="px-4 py-3 font-medium text-gray-900">{t.title}</td>
                   <td className="px-4 py-3">
-                    <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs">
-                      {t.status}
-                    </span>
+                    {t.ticket_type ? (
+                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                        {t.ticket_type}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-300">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    {t.priority ? (
+                      <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">
+                        {t.priority}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-gray-300">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <StatusBadge status={t.status} labels={labels} colors={colors} />
                   </td>
                   <td className="px-4 py-3 text-gray-500">{t.created_at}</td>
                 </tr>
@@ -110,7 +159,14 @@ export default function Tickets() {
         </table>
       </div>
 
-      {selected && <TicketModal id={selected} onClose={() => setSelected(null)} />}
+      {selected && (
+        <TicketModal
+          id={selected}
+          labels={labels}
+          colors={colors}
+          onClose={() => setSelected(null)}
+        />
+      )}
     </div>
   )
 }

@@ -7,6 +7,7 @@ import { createTicket } from '../../api/tickets'
 export default function CreateTicket() {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  const [priority, setPriority] = useState('Medium')
   const [selected, setSelected] = useState([]) // item ids
   const [search, setSearch] = useState('')
   const [busy, setBusy] = useState(false)
@@ -34,7 +35,7 @@ export default function CreateTicket() {
     }
     setBusy(true)
     try {
-      await createTicket({ title, description, item_ids: selected })
+      await createTicket({ title, description, priority, item_ids: selected })
       queryClient.invalidateQueries({ queryKey: ['tickets'] })
       queryClient.invalidateQueries({ queryKey: ['dashboard'] })
       navigate('/kanban')
@@ -68,6 +69,21 @@ export default function CreateTicket() {
             rows={4}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none"
           />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700">Priorité</label>
+          <select
+            value={priority}
+            onChange={(e) => setPriority(e.target.value)}
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-indigo-500 focus:outline-none"
+          >
+            <option value="Very low">Very low</option>
+            <option value="Low">Low</option>
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
+            <option value="Very high">Very high</option>
+          </select>
         </div>
 
         <div>

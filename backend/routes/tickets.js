@@ -23,15 +23,15 @@ router.get('/:id', (req, res) => {
 
 // POST /api/tickets — crée le ticket + associe les items (ticket_items)
 router.post('/', (req, res) => {
-  const { title, description, status, item_ids } = req.body;
+  const { title, description, status, priority, item_ids } = req.body;
   if (!title) return res.status(400).json({ error: 'title is required' });
 
   const ids = Array.isArray(item_ids) ? item_ids : [];
 
   const create = db.transaction(() => {
     const result = db
-      .prepare('INSERT INTO tickets (title, description, status) VALUES (?, ?, ?)')
-      .run(title, description || null, status || 'open');
+      .prepare('INSERT INTO tickets (title, description, status, priority) VALUES (?, ?, ?, ?)')
+      .run(title, description || null, status || 'open', priority || null);
     const ticketId = result.lastInsertRowid;
     const link = db.prepare(
       'INSERT OR IGNORE INTO ticket_items (ticket_id, item_id) VALUES (?, ?)'

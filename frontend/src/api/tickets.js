@@ -10,8 +10,8 @@ export async function fetchTicket(id) {
   return data
 }
 
-export async function createTicket({ title, description, item_ids }) {
-  const { data } = await api.post('/tickets', { title, description, item_ids })
+export async function createTicket({ title, description, priority, item_ids }) {
+  const { data } = await api.post('/tickets', { title, description, priority, item_ids })
   return data
 }
 

@@ -62,6 +62,22 @@ export default function Dashboard() {
             </ul>
           )}
         </section>
+
+        <section className="rounded-xl border border-gray-200 bg-white p-5">
+          <h2 className="mb-3 text-lg font-semibold text-gray-800">Tickets par type</h2>
+          {!data.ticketsByType || data.ticketsByType.length === 0 ? (
+            <p className="text-sm text-gray-400">Aucun ticket.</p>
+          ) : (
+            <ul className="divide-y divide-gray-100">
+              {data.ticketsByType.map((row) => (
+                <li key={row.type} className="flex justify-between py-2 text-sm">
+                  <span className="text-gray-700">{row.type}</span>
+                  <span className="font-semibold text-gray-900">{row.count}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       </div>
     </div>
   )
